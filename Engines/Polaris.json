@@ -60,6 +60,6 @@
             "report_rate"   : 2,
             "workload_size" : 8,
             "games"         : 1000
-        },
+        }
     }
 }
