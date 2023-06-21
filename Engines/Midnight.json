@@ -1,0 +1,19 @@
+'Midnight' : {
+
+    'nps'    : 2150853,
+    'base'   : 'master',
+    'book'   : '4moves_noob.epd',
+    'bounds' : '[0.00, 5.00]',
+    'source' : 'https://github.com/archishou/MidnightChessEngine',
+
+    'build' : {
+        'path'      : '',
+        'compilers' : ['clang'],
+        'cpuflags'  : [],
+    },
+
+    'testmodes' : {
+        'STC'     : { 'threads' : 1, 'hash' :   8, 'timecontrol' : '8.0+0.08' },
+        'LTC'     : { 'threads' : 1, 'hash' :  64, 'timecontrol' : '40.0+0.4' },
+     },
+},
