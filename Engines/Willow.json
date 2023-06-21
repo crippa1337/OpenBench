@@ -1,1 +1,19 @@
-hi
+{
+
+            'nps'    : 1479473,
+            'base'   : 'master',
+            'book'   : '4moves_noob.epd',
+            'bounds' : '[0.00, 5.00]',
+            'source' : 'https://github.com/Adam-Kulju/Willow',
+
+            'build' : {
+                'path'     : '',
+                'compilers': ['clang'],
+                'cpuflags' : [],
+            },
+
+            'testmodes' : [
+                { 'id' : 'STC',     'th' : 1, 'hash' :   32, 'tc' : '8.0+0.08' },
+                { 'id' : 'LTC',     'th' : 1, 'hash' :  128, 'tc' : '60.0+0.6' }
+            ],
+        },
