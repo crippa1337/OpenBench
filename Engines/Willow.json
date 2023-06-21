@@ -15,17 +15,17 @@
             },
 
             "testmodes" : [
-            "STC" : {
-                "options"       : "Threads=1 Hash=32",
-                "timecontrol"   : "8.0+0.08",
-                "report_rate"   : 8,
-                "workload_size" : 32
-            },
-            "LTC" : {
-                "options"       : "Threads=1 Hash=128",
-                "timecontrol"   : "60.0+0.6",
-                "report_rate"   : 2,
-                "workload_size" : 8
-            },
+                        "STC" : {
+                            "options"       : "Threads=1 Hash=32",
+                            "timecontrol"   : "8.0+0.08",
+                            "report_rate"   : 8,
+                            "workload_size" : 32
+                        },
+                        "LTC" : {
+                            "options"       : "Threads=1 Hash=128",
+                            "timecontrol"   : "60.0+0.6",
+                            "report_rate"   : 2,
+                            "workload_size" : 8
+                        },
             ],
 }
