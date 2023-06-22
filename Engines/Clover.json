@@ -1,7 +1,7 @@
 {
   "private": false,
   "nps": 1509540,
-  "base": "main",
+  "base": "master",
   "source": "https://github.com/lucametehau/CloverEngine",
 
   "bounds": "[0.00, 3.00]",
