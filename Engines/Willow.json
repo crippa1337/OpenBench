@@ -14,7 +14,7 @@
         "cpuflags" : []
     },
 
-    "testmodes" : [
+    "testmodes" : {
         "STC" : {
             "options"       : "Threads=1 Hash=32",
             "timecontrol"   : "8.0+0.08",
@@ -27,5 +27,5 @@
             "report_rate"   : 2,
             "workload_size" : 8
         }
-    ]
+    }
 }
