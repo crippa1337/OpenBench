@@ -6,9 +6,7 @@
 
     "bounds"   : "[0.00, 5.00]",
     "book"     : "noob_4moves.epd",
-    "win_adj"  : "movecount=3 score=1000",
-    "draw_adj" : "movenumber=40 movecount=40 score=10",
-
+    
     "build" : {
         "path"      : "",
         "compilers" : ["cargo>=1.60.0"],
