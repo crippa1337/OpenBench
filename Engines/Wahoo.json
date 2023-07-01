@@ -6,7 +6,9 @@
 
     "bounds"   : "[0.00, 5.00]",
     "book"     : "noob_4moves.epd",
-    
+    "win_adj"  : "None",
+    "draw_adj" : "None",
+
     "build" : {
         "path"      : "",
         "compilers" : ["cargo>=1.60.0"],
