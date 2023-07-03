@@ -47,15 +47,15 @@ OPENBENCH_CONFIG = {
 
     # Generic Error Messages useful to those setting up their own instance
     'error': {
-        'disabled': 'Account has not been enabled. Contact andrew@grantnet.us',
+        'disabled': 'Account has not been enabled. Contact crippa on Discord',
         'fakeuser': 'This is not a real OpenBench User. Create an OpenBench account',
         'requires_login': 'All pages require a user login to access',
         'manual_registration': 'Registration can only be done via an Administrator',
     },
 
     # Link to the repo on the sidebar, as well as the core files
-    'framework': 'http://github.com/AndyGrant/OpenBench/',
-    'corefiles': 'https://raw.githubusercontent.com/AndyGrant/OpenBench/master/CoreFiles',
+    'framework': 'http://github.com/crippa1337/OpenBench/',
+    'corefiles': 'https://raw.githubusercontent.com/crippa1337/OpenBench/master/CoreFiles',
 
     # Test Configuration. For both SPRT and Fixed Games Tests
     'tests': {
