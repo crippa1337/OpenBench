@@ -71,7 +71,7 @@ if __name__ == "__main__":
         config = configs[file.name]
         if config != None:
             with open(file.path, "w") as f:
-                print(f"{file.name.split('.')[0]: >12}: {config[0]: >8} -> {config[1]: >8}")
+                print(f"{file.name.split('.')[0]: <12}: {config[0]: <8} -> {config[1]: >8}")
                 # overwrite file
                 f.write(json.dumps(config[2], indent=4))
         else:
