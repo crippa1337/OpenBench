@@ -3,25 +3,6 @@ import json
 import tempfile
 import subprocess
 
-class Engine:
-    path: str
-    branch: str
-    make_path: str
-
-    def __init__(
-            self,
-            source: str,
-            branch: str,
-            make_path: bool
-    ) -> None:
-        self.source = source
-        self.branch = branch
-        self.make_path = make_path
-        return
-
-    def clone(self) -> None:
-        subprocess.run(f"git clone {self.source} --single-branch --depth 1 --quiet", stdout=subprocess.DEVNULL)
-
 if __name__ == "__main__":
     root = os.getcwd()
     engines = os.path.join(root, "Engines")
@@ -38,15 +19,22 @@ if __name__ == "__main__":
             with open(file.path, "r") as f:
                 data = f.read()
                 obj = json.loads(data)
-                engine = Engine(obj["source"], obj["base"], obj["build"]["path"])
-                name = engine.source.split('/')[-1]
 
-                print(f"Cloning [{name}]...")
+                # get engine info
+                source = obj["source"]
+                base_branch = obj["base"]
+                makefile_path = obj["build"]["path"]
+                name = source.split('/')[-1]
+
+                print(f"Cloning [{name}/{base_branch}]...")
                 os.chdir(path)
-                engine.clone()
+                subprocess.run(
+                    f"git clone {source} -b {base_branch} --single-branch --depth 1 --quiet",
+                    stdout=subprocess.DEVNULL
+                )
 
                 print("Compiling...")
-                make_path = os.path.join(path, name, engine.make_path)
+                make_path = os.path.join(path, name, makefile_path)
                 os.chdir(make_path)
                 subprocess.run("make EXE=temp", stdout=subprocess.DEVNULL)
 
@@ -56,14 +44,14 @@ if __name__ == "__main__":
                     bench_line = result.stdout.decode('utf-8').strip().split('\n')[-1]
                     print(bench_line)
                     old_nps = str(obj["nps"])
-                    nps = bench_line.split(' ')[-2]
-                    obj["nps"] = int(nps)
-                    configs[file.name] = [old_nps, nps, obj]
+                    obj["nps"] = int(bench_line.split(' ')[-2])
+                    configs[file.name] = (old_nps, obj)
                 except FileNotFoundError:
                     print("Couldn't run bench!")
                     configs[file.name] = None
 
                 print("")
+
         os.chdir(root)
 
     # overwrite files and print summary
@@ -71,8 +59,7 @@ if __name__ == "__main__":
         config = configs[file.name]
         if config != None:
             with open(file.path, "w") as f:
-                print(f"{file.name.split('.')[0]: <12}: {config[0]: <8} -> {config[1]: >8}")
-                # overwrite file
+                print(f"{file.name.split('.')[0]: <12}: {config[0]: <8} -> {config[1]['nps']: >8}")
                 f.write(json.dumps(config[2], indent=4))
         else:
             print(f"{file.name.split('.')[0]: <12}: Could not get bench!")
