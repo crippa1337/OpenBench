@@ -75,4 +75,4 @@ if __name__ == "__main__":
                 # overwrite file
                 f.write(json.dumps(config[2], indent=4))
         else:
-            print(f"{file.name.split('.')[0]: 12>}: Could not get bench!")
+            print(f"{file.name.split('.')[0]: <12}: Could not get bench!")
