@@ -55,17 +55,24 @@ if __name__ == "__main__":
                     result = subprocess.run("temp.exe bench", stdout=subprocess.PIPE)
                     bench_line = result.stdout.decode('utf-8').strip().split('\n')[-1]
                     print(bench_line)
-                    obj["nps"] = int(bench_line.split(' ')[-2])
+                    old_nps = str(obj["nps"])
+                    nps = bench_line.split(' ')[-2]
+                    obj["nps"] = int(nps)
+                    configs[file.name] = [old_nps, nps, obj]
                 except FileNotFoundError:
                     print("Couldn't run bench!")
+                    configs[file.name] = None
 
-                configs[file.name] = obj
                 print("")
         os.chdir(root)
 
-    # overwrite files
+    # overwrite files and print summary
     for file in config_files:
-        with open(file.path, "w") as f:
-            f.write(json.dumps(configs[file.name], indent=4))
-
-    print(configs)
+        config = configs[file.name]
+        if config != None:
+            with open(file.path, "w") as f:
+                print(f"{file.name.split('.')[0]: 12>}: {config[0]: >8} -> {config[1]: >8}")
+                # overwrite file
+                f.write(json.dumps(config[2], indent=4))
+        else:
+            print(f"{file.name.split('.')[0]: 12>}: Could not get bench!")
