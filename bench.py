@@ -66,6 +66,6 @@ if __name__ == "__main__":
             with open(file.path, "w") as f:
                 nps = config[1]["nps"]
                 print(f"{file.name.split('.')[0]: <12}: {config[0]: <8} -> {nps: >8}")
-                f.write(json.dumps(config[2], indent=4))
+                f.write(json.dumps(config[1], indent=4))
         else:
             print(f"{file.name.split('.')[0]: <12}: An error occurred!")
