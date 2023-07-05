@@ -33,22 +33,27 @@ if __name__ == "__main__":
                     stdout=subprocess.DEVNULL
                 )
 
-                print("Compiling...")
-                make_path = os.path.join(path, name, makefile_path)
-                os.chdir(make_path)
-                subprocess.run("make EXE=temp", stdout=subprocess.DEVNULL)
-
-                print("Running Bench...")
                 try:
-                    result = subprocess.run("temp.exe bench", stdout=subprocess.PIPE)
-                    bench_line = result.stdout.decode('utf-8').strip().split('\n')[-1]
-                    print(bench_line)
-                    old_nps = str(obj["nps"])
-                    obj["nps"] = int(bench_line.split(' ')[-2])
-                    configs[file.name] = (old_nps, obj)
-                except FileNotFoundError:
-                    print("Couldn't run bench!")
+                    print("Compiling...")
+                    make_path = os.path.join(path, name, makefile_path)
+                    os.chdir(make_path)
+                    subprocess.run("make EXE=temp", stdout=subprocess.DEVNULL)
+
+                    print("Running Bench...")
+                    try:
+                        result = subprocess.run("temp.exe bench", stdout=subprocess.PIPE)
+                        bench_line = result.stdout.decode('utf-8').strip().split('\n')[-1]
+                        print(bench_line)
+                        old_nps = str(obj["nps"])
+                        obj["nps"] = int(bench_line.split(' ')[-2])
+                        configs[file.name] = (old_nps, obj)
+                    except:
+                        print("Couldn't run bench!")
+                        configs[file.name] = None
+                except:
+                    print("Couldn't compile!")
                     configs[file.name] = None
+                    continue
 
                 print("")
 
@@ -59,7 +64,8 @@ if __name__ == "__main__":
         config = configs[file.name]
         if config != None:
             with open(file.path, "w") as f:
-                print(f"{file.name.split('.')[0]: <12}: {config[0]: <8} -> {config[1]['nps']: >8}")
+                nps = config[1]["nps"]
+                print(f"{file.name.split('.')[0]: <12}: {config[0]: <8} -> {nps: >8}")
                 f.write(json.dumps(config[2], indent=4))
         else:
-            print(f"{file.name.split('.')[0]: <12}: Could not get bench!")
+            print(f"{file.name.split('.')[0]: <12}: An error occurred!")
