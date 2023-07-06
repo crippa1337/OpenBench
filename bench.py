@@ -29,7 +29,7 @@ if __name__ == "__main__":
                 print(f"Cloning [{name}/{base_branch}]...")
                 os.chdir(path)
                 subprocess.run(
-                    f"git clone {source} -b {base_branch} --single-branch --depth 1 --quiet",
+                    ["git", "clone", source, "-b", base_branch, "--single-branch", "--depth", "1", "--quiet"],
                     stdout=subprocess.DEVNULL
                 )
 
@@ -37,11 +37,15 @@ if __name__ == "__main__":
                     print("Compiling...")
                     make_path = os.path.join(path, name, makefile_path)
                     os.chdir(make_path)
-                    subprocess.run("make EXE=temp", stdout=subprocess.DEVNULL)
+                    subprocess.run(["make", "EXE=temp"], stdout=subprocess.DEVNULL)
 
                     print("Running Bench...")
                     try:
-                        result = subprocess.run("temp.exe bench", stdout=subprocess.PIPE)
+                        if os.name == 'nt':
+                            exe = "temp.exe"
+                        else:
+                            exe = "./temp"
+                        result = subprocess.run([exe, "bench"], stdout=subprocess.PIPE)
                         bench_line = result.stdout.decode('utf-8').strip().split('\n')[-1]
                         print(bench_line)
                         old_nps = str(obj["nps"])
@@ -51,7 +55,7 @@ if __name__ == "__main__":
                         print("Couldn't run bench!")
                         configs[file.name] = None
                 except:
-                    print("Couldn't compile!")
+                    print("Couldn't compile!\n")
                     configs[file.name] = None
                     continue
 
