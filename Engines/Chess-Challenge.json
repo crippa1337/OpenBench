@@ -9,8 +9,7 @@
     "build": {
         "path": "",
         "compilers": [],
-        "cpuflags": ["SSE3", "POPCNT"],
-        "systems": ["Windows"]
+        "cpuflags": ["SSE3", "POPCNT"]
     },
     "testmodes": {
         "STC": {
