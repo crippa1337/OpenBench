@@ -10,7 +10,7 @@
 
     "build" : {
         "path"     : "",
-        "compilers": ["clang"],
+        "compilers": ["clang++", "g++"],
         "cpuflags" : []
     },
 
