@@ -18,7 +18,7 @@
 #                                                                             #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-import os, hashlib, datetime, json, secrets, re
+import os, hashlib, datetime, json, secrets, sys, re
 
 import django.http
 import django.shortcuts
@@ -33,9 +33,8 @@ from OpenBench.models import *
 from django.contrib.auth.models import User
 from OpenSite.settings import MEDIA_ROOT
 
-from wsgiref.util import FileWrapper
-from django.db.models import F
-from django.http import HttpResponse, FileResponse, JsonResponse
+from django.db.models import F, Q
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import FileSystemStorage
 from django.core.files.base import ContentFile
@@ -47,7 +46,7 @@ from django.core.files.base import ContentFile
 class UnableToAuthenticate(Exception):
     pass
 
-def render(request, template, content={}, always_allow=False):
+def render(request, template, content={}, always_allow=False, error=None, warning=None, status=None):
 
     data = content.copy()
     data.update({ 'config' : OPENBENCH_CONFIG })
@@ -67,17 +66,29 @@ def render(request, template, content={}, always_allow=False):
         elif request.user.is_authenticated and not profile.first():
             request.session['error_message'] = data['config']['error']['fakeuser']
 
+    if error:
+        request.session['error_message'] = error
+
+    if warning:
+        request.session['warning_message'] = error
+
+    if status:
+        request.session['status_message'] = status
+
     response = django.shortcuts.render(request, 'OpenBench/{0}'.format(template), data)
 
-    for key in ['status_message', 'error_message']:
+    for key in ['status_message', 'warning_message', 'error_message']:
         if key in request.session: del request.session[key]
 
     return response
 
-def redirect(request, destination, error=None, status=None):
+def redirect(request, destination, error=None, warning=None, status=None):
 
     if error:
         request.session['error_message'] = error
+
+    if warning:
+        request.session['warning_message'] = warning
 
     if status:
         request.session['status_message'] = status
@@ -277,36 +288,101 @@ def search(request):
         return render(request, 'search.html', {})
 
     tests = Test.objects.all()
-    keywords = request.POST['keywords'].upper().split()
-    if not keywords: keywords = [""]
 
-    if request.POST['engine'] != '':
-        tests = tests.filter(engine=request.POST['engine'])
+    # Optional Selection box filters
 
-    if request.POST['author'] != '':
+    if request.POST['author']:
         tests = tests.filter(author=request.POST['author'])
 
-    if request.POST['showgreens'] == 'False':
-        tests = tests.exclude(passed=True)
+    if request.POST['engine']:
+        tests = tests.filter(Q(base_engine=request.POST['engine']) | Q(dev_engine=request.POST['engine']))
 
-    if request.POST['showyellows'] == 'False':
+    if request.POST['opening-book']:
+        tests = tests.filter(book_name=request.POST['opening-book'])
+
+    if request.POST['test-mode']:
+        tests = tests.filter(test_mode=request.POST['test-mode'])
+
+    if request.POST['syzygy-wdl']:
+        tests = tests.filter(syzygy_wdl=request.POST['syzygy-wdl'])
+
+    # Checkboxes for Test statuses
+
+    if 'show-greens' not in request.POST:
+        tests = tests.annotate(x=F('elolower') + F('eloupper')).exclude(x__gte=0, passed=True)
+
+    if 'show-yellows' not in request.POST:
         tests = tests.exclude(failed=True, wins__gte=F('losses'))
 
-    if request.POST['showreds'] == 'False':
+    if 'show-reds' not in request.POST:
         tests = tests.exclude(failed=True, wins__lt=F('losses'))
 
-    if request.POST['showunfinished'] == 'False':
+    if 'show-blues' not in request.POST:
+        tests = tests.annotate(x=F('elolower') + F('eloupper')).exclude(x__lt=0, passed=True)
+
+    if 'show-stopped' not in request.POST:
         tests = tests.exclude(passed=False, failed=False)
 
-    if request.POST['showdeleted'] == 'False':
+    if 'show-deleted' not in request.POST:
         tests = tests.exclude(deleted=True)
 
-    filtered = [
-        test for test in tests.order_by('-updated') if
-        any(keyword in test.dev.name.upper() for keyword in keywords)
-    ]
+    # Remaining filtering is hard to do with standard Django queries
 
-    return render(request, 'search.html', {'tests' : filtered})
+    filtered = []
+    keywords = request.POST['keywords'].upper().split()
+
+    tc_type   = request.POST['tc-type']
+    tc_value  = request.POST['tc-value-input']
+    tc_select = request.POST['tc-value-select']
+
+    # Attempt to parse the time control
+
+    try:
+        if tc_value:
+            tc_value = OpenBench.utils.TimeControl.parse(tc_value)
+    except:
+        return redirect(request, '/search/', error='Invalid Time Control')
+
+    # Filter out tests
+
+    for test in tests:
+
+        # None of the keywords appear in the dev branch name
+        if keywords and not any(x in test.dev.name.upper() for x in keywords):
+            continue
+
+        # Determine the max number of threads that either engine used
+        dev_threads  = OpenBench.utils.extract_option(test.dev_options, 'Threads')
+        base_threads = OpenBench.utils.extract_option(test.base_options, 'Threads')
+        max_threads  = max(int(dev_threads), int(base_threads))
+
+        # Extract requsted configuration
+        select_value = request.POST['threads-select']
+        input_value  = int(request.POST['threads-input'])
+
+        # Requested Threads value did not match observed value
+        if select_value == '='  and max_threads != input_value: continue
+        if select_value == '>=' and max_threads  < input_value: continue
+        if select_value == '<=' and max_threads  > input_value: continue
+
+        # Filter our undesired time control types
+        if tc_type and tc_type != OpenBench.utils.TimeControl.control_type(test.dev_time_control):
+            continue
+
+        # Filter tests of the same time control type, but outside our range
+        if tc_value:
+
+            search_base = OpenBench.utils.TimeControl.control_base(tc_value)
+            test_base   = OpenBench.utils.TimeControl.control_base(test.dev_time_control)
+
+            if tc_select == '='  and search_base != test_base: continue
+            if tc_select == '>=' and search_base  > test_base: continue
+            if tc_select == '<=' and search_base  < test_base: continue
+
+        filtered.append(test)
+
+    error = 'No matching tests found' if not len(filtered) else None
+    return render(request, 'search.html', { 'tests' : filtered }, error=error)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #                           GENERAL DATA TABLE VIEWS                          #
@@ -365,7 +441,8 @@ def test(request, id, action=None):
         return django.http.HttpResponseRedirect('/index/')
 
     if action not in ['APPROVE', 'RESTART', 'STOP', 'DELETE', 'MODIFY']:
-        return render(request, 'test.html', OpenBench.utils.get_test_context(test))
+        data = { 'test' : test, 'results': Result.objects.filter(test=test) }
+        return render(request, 'test.html', data)
 
     if not request.user.is_authenticated:
         return redirect(request, '/login/', error='Only users may interact with tests')
@@ -410,6 +487,9 @@ def create_test(request):
     if errors != [] and errors != None:
         return redirect(request, '/newTest/', error='\n'.join(errors))
 
+    if warning := OpenBench.utils.branch_is_out_of_date(test):
+        warning = 'Consider Rebasing: Dev (%s) appears behind Base (%s)' % (test.dev.name, test.base.name)
+
     username = request.user.username
     profile  = Profile.objects.get(user=request.user)
     LogEvent.objects.create(author=username, summary='CREATE', log_file='', test_id=test.id)
@@ -430,109 +510,61 @@ def create_test(request):
         action = "APPROVE P={0} TP={1}".format(test.priority, test.throughput)
         LogEvent.objects.create(author=username, summary=action, log_file='', test_id=test.id)
 
-    return django.http.HttpResponseRedirect('/index/')
+    return redirect(request, '/index/', warning=warning)
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #                          NETWORK MANAGEMENT VIEWS                           #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-def networks(request, target=None, sha256=None, client=False):
+def networks(request, engine=None, action=None, name=None, client=False):
 
-    # *** GET Requests:
-    # [1] Fetch a view of all the Networks on the framework (/networks/)
-    # [2] Fetch a view of all Networks for a given engine (/networks/<engine>/)
-    # [3] Download the contents of a Network if allowed (/networks/download/<sha256>/)
-    #
-    # *** POST Requests:
-    # [1] Upload a Network to the framework (/networks/upload/)
-    # [2] Set as default a Network on the framework (/networks/default/<sha256>/)
-    # [3] Delete a Network from the framework (/networks/delete/<sha256>/)
-    #
-    # *** Rights:
-    # Any user may look at the list of Networks, for all or some engines
-    # Only authenticated and approved Users may interact in the remaining ways
-
-    if not target or target.upper() not in ['UPLOAD', 'DEFAULT', 'DELETE', 'DOWNLOAD']:
+    # Without an identifier and a valid action, all we can do is view the list
+    if not name or action.upper() not in ['UPLOAD', 'DEFAULT', 'DELETE', 'DOWNLOAD']:
         networks = Network.objects.all()
-        if target: networks = networks.filter(engine=target)
-        return render(request, 'networks.html', { 'networks' : networks.order_by('-id') })
+        if engine and engine in OPENBENCH_CONFIG['engines'].keys():
+            networks = networks.filter(engine=engine)
+        return render(request, 'networks.html', { 'networks' : list(networks.order_by('-id').values()) })
 
+    # Require logins. Clients will be artifically logged in
     if not request.user.is_authenticated:
         return django.http.HttpResponseRedirect('/login/')
 
+    # Require approver credentials, unless downloading as a client
     if not client and not Profile.objects.get(user=request.user).approver:
         return django.http.HttpResponseRedirect('/index/')
 
-    if target.upper() == 'UPLOAD':
+    # Split out Uploads, since there is no logic to disambiguate the name
+    if action.upper() == 'UPLOAD':
+        return OpenBench.utils.network_upload(request, engine, name)
 
-        if request.method == 'GET':
-            return render(request, 'uploadnet.html', {})
+    # Push off all the actual effort to OpenBench.utils for all actions
+    actions = {
+        'DEFAULT'  : OpenBench.utils.network_default,
+        'DELETE'   : OpenBench.utils.network_delete,
+        'DOWNLOAD' : OpenBench.utils.network_download,
+    }
 
-        name    = request.POST['name']
-        engine  = request.POST['engine']
-        netfile = request.FILES['netfile']
-        sha256  = hashlib.sha256(netfile.file.read()).hexdigest()[:8].upper()
+    # Update the Network, if we can find one for the given name/sha256
+    if (network := OpenBench.utils.network_disambiguate(engine, name)):
+        return actions[action.upper()](request, engine, network)
 
-        if not re.match(r'^[a-zA-Z0-9_.-]+$', name):
-            return redirect(request, '/uploadnet/', error='Valid characters are [a-zA-Z0-9_.-]')
+    # Otherwise we could not find the Network, and cannot do anything
+    return redirect(request, '/networks/', error='No network found with matching Sha')
 
-        if Network.objects.filter(sha256=sha256):
-            return redirect(request, '/uploadnet/', error='Network with that hash already exists')
+def network_form(request):
 
-        if Network.objects.filter(engine=engine, name=name):
-            return redirect(request, '/uploadnet/', error='Network with that name already exists for that engine')
+    # Require logins. Clients will be artifically logged in
+    if not request.user.is_authenticated:
+        return django.http.HttpResponseRedirect('/login/')
 
-        if engine not in OPENBENCH_CONFIG['engines'].keys():
-            return redirect(request, '/uploadnet/', error='No Engine found with matching name')
+    # Require approver credentials, unless downloading as a client
+    if not Profile.objects.get(user=request.user).approver:
+        return django.http.HttpResponseRedirect('/index/')
 
-        FileSystemStorage().save(sha256, netfile)
-
-        Network.objects.create(
-            sha256=sha256, name=name,
-            engine=engine, author=request.user.username)
-
-        return redirect(request, '/networks/', status='Uploaded %s for %s' % (engine, name))
-
-    if target.upper() == 'DEFAULT':
-
-        if not Network.objects.filter(sha256=sha256):
-            return redirect(request, '/networks/', error='No network found with matching Sha')
-
-        network = Network.objects.get(sha256=sha256)
-        Network.objects.filter(engine=network.engine).update(default=False)
-        network.default = True; network.save()
-
-        status = 'Set %s as default for %s' % (network.name, network.engine)
-        return redirect(request, '/networks/', status=status)
-
-    if target.upper() == 'DELETE':
-
-        if not Network.objects.filter(sha256=sha256):
-            return redirect(request, '/networks/', error='No network found with matching Sha')
-
-        network = Network.objects.get(sha256=sha256)
-        status  = 'Deleted %s for %s' % (network.name, network.engine)
-
-        network.delete()
-        FileSystemStorage().delete(sha256)
-
-        return redirect(request, '/networks/', status=status)
-
-    if target.upper() == 'DOWNLOAD':
-
-        if not Network.objects.filter(sha256=sha256):
-            return redirect(request, '/networks/', error='No network found with matching Sha')
-
-        netfile  = os.path.join(MEDIA_ROOT, sha256)
-        fwrapper = FileWrapper(open(netfile, 'rb'), 8192)
-        response = FileResponse(fwrapper, content_type='application/octet-stream')
-
-        response['Expires'] = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).ctime()
-        response['Content-Length'] = os.path.getsize(netfile)
-        response['Content-Disposition'] = 'attachment; filename=' + sha256
-        return response
-
+    # Get requests should not be reaching this point
+    if request.method == 'GET':
+        return render(request, 'uploadnet.html', {})
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #                             OPENBENCH SCRIPTING                             #
@@ -543,11 +575,13 @@ def scripts(request):
 
     login(request) # All requests are attached to a User
 
-    if request.POST['action'] == 'UPLOAD':
-        return networks(request, target='UPLOAD')
+    if request.POST['action'] == 'UPLOAD_NETWORK':
+        engine = request.POST['engine']
+        name   = request.POST['name']
+        return networks(request, engine, 'upload', name)
 
     if request.POST['action'] == 'CREATE_TEST':
-        return newTest(request)
+        return create_test(request)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #                              CLIENT HOOK VIEWS                              #
@@ -590,6 +624,7 @@ def client_get_build_info(request):
     data = {}
     for engine, config in OPENBENCH_CONFIG['engines'].items():
         data[engine] = config['build']
+        data[engine]['private'] = config['private']
     return JsonResponse(data)
 
 @csrf_exempt
@@ -628,6 +663,10 @@ def client_worker_info(request):
         if not data['private'] and engine not in machine.info['compilers'].keys():
             continue
 
+        # Must match the Operating Systems supported by the engine
+        if machine.info['os_name'] not in data['build']['systems']:
+            continue
+
         # All requirements are met, and this Machine can play with the given engine
         machine.info['supported'].append(engine)
 
@@ -648,19 +687,14 @@ def client_get_workload(request):
     return JsonResponse(OpenBench.utils.get_workload(machine))
 
 @csrf_exempt
-def client_get_network(request, identifier, engine=None):
+def client_get_network(request, engine, name):
 
     # Verify the User's credentials
     try: django.contrib.auth.login(request, authenticate(request, True))
     except UnableToAuthenticate: return HttpResponse('Bad Credentials')
 
-    # Return the requested Neural Network, after resolving the Network name
-    if engine is not None:
-        try: identifier = Network.objects.get(name=identifier, engine=engine).sha256
-        except: return HttpResponse('Unable to find associated Network')
-
     # Return the requested Neural Network file for the Client
-    return networks(request, target='DOWNLOAD', sha256=identifier, client=True)
+    return networks(request, engine, 'DOWNLOAD', name, client=True)
 
 @csrf_exempt
 def client_wrong_bench(request):
@@ -696,8 +730,11 @@ def client_submit_nps(request):
     machine, response = client_verify_worker(request)
     if response != None: return response
 
-    # Update the NPS counter for the GUI views
-    machine.mnps = float(request.POST['nps']) / 1e6; machine.save()
+    # Update the NPS counters for the GUI views
+    machine.mnps      = float(request.POST['nps'     ]) / 1e6;
+    machine.dev_mnps  = float(request.POST['dev_nps' ]) / 1e6;
+    machine.base_mnps = float(request.POST['base_nps']) / 1e6;
+    machine.save()
 
     # Pass back an empty JSON response
     return JsonResponse({})

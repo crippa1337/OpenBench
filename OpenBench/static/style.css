@@ -43,7 +43,7 @@ body, html, main{
     padding-right: 2rem;
 }
 
-#content{
+#content {
     max-width: calc(min(100%,1000px));
     width: 100%;
     white-space: nowrap;
@@ -85,6 +85,8 @@ body, html, main{
 
 #sidebar li a {
     color: var(--color-font2);
+    display: block;
+    width: 100%;
 }
 
 #sidebar li:hover {
@@ -129,12 +131,18 @@ body, html, main{
     background-color: var(--color1);
 }
 
-/* Tables that are too long can wrap words*/
+/* Tables that are too long can wrap words */
 
-#content .wrappable td{
+#content .wrappable td {
     white-space: pre-wrap;
     word-break: break-word;
     word-wrap: break-word;
+}
+
+/* Things which enable a Cursor Pointer event */
+
+#content .cursor {
+    cursor: pointer;
 }
 
 /* Table Headers in General */
@@ -185,6 +193,7 @@ body, html, main{
     text-align: center;
     transition: background-color 0.3s ease;
     font-family: "Courier Prime", serif;
+    cursor: pointer;
 }
 
 #content .btn-blue {
@@ -324,10 +333,23 @@ td pre {
     color: red;
 }
 
+#content .warning-message {
+    color: yellow;
+}
+
 #content .status-message {
     color: green;
 }
 
 #content .site-title {
     color: var(--color-font3);
+}
+
+#content .default-network {
+    color: var(--color-font3);
+}
+
+#content .non-default-network {
+    color: var(--color-font1);
+    transform: scale(0.75);
 }

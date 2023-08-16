@@ -1,38 +1,25 @@
-import django.apps
-import threading, time
-import OpenBench.utils
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#                                                                             #
+#   OpenBench is a chess engine testing framework authored by Andrew Grant.   #
+#   <https://github.com/AndyGrant/OpenBench>           <andrew@grantnet.us>   #
+#                                                                             #
+#   OpenBench is free software: you can redistribute it and/or modify         #
+#   it under the terms of the GNU General Public License as published by      #
+#   the Free Software Foundation, either version 3 of the License, or         #
+#   (at your option) any later version.                                       #
+#                                                                             #
+#   OpenBench is distributed in the hope that it will be useful,              #
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of            #
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
+#   GNU General Public License for more details.                              #
+#                                                                             #
+#   You should have received a copy of the GNU General Public License         #
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.     #
+#                                                                             #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+from OpenBench.watcher import ArtifactWatcher
 from django.core.management.commands.runserver import Command as BaseRunserverCommand
-
-class ArtifactWatcher(threading.Thread):
-
-    def update_test(self, test):
-
-        dev_has_all  = test.dev.source.endswith('artifacts')
-        base_has_all = test.base.source.endswith('artifacts')
-
-        dev_headers  = OpenBench.utils.read_git_credentials(test.dev_engine)
-        base_headers = OpenBench.utils.read_git_credentials(test.base_engine)
-
-        if dev_headers and not dev_has_all:
-            test.dev.source, dev_has_all = OpenBench.utils.fetch_artifact_url(
-                test.dev.source, test.dev_engine, dev_headers, test.dev.sha)
-            test.dev.save()
-
-        if base_headers and not base_has_all:
-            test.base.source, base_has_all = OpenBench.utils.fetch_artifact_url(
-                test.base.source, test.base_engine, base_headers, test.base.sha)
-            test.base.save()
-
-        if dev_has_all and base_has_all:
-            test.awaiting = False
-            test.save()
-
-    def run(self):
-        while True:
-            for test in OpenBench.utils.get_awaiting_tests():
-                self.update_test(test)
-            time.sleep(10)
 
 class Command(BaseRunserverCommand):
 

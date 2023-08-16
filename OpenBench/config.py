@@ -20,12 +20,17 @@
 
 import json
 import os.path
+import sys
 from OpenSite.settings import PROJECT_PATH
 
 
 def load_json_config(*path):
-    with open(os.path.join(PROJECT_PATH, *path)) as fin:
-        return json.load(fin)
+    try:
+        with open(os.path.join(PROJECT_PATH, *path)) as fin:
+            return json.load(fin)
+    except:
+        print('Error reading ', path)
+        sys.exit()
 
 
 def load_folder_of_configs(*path):
@@ -43,7 +48,7 @@ REQUIRE_MANUAL_REGISTRATION = False
 OPENBENCH_CONFIG = {
 
     # Server Client version control
-    'client_version': '9',
+    'client_version': '12',
 
     # Generic Error Messages useful to those setting up their own instance
     'error': {
@@ -60,7 +65,7 @@ OPENBENCH_CONFIG = {
     # Test Configuration. For both SPRT and Fixed Games Tests
     'tests': {
         'max_games': '40000',        # Default for Fixed Games
-        'confidence': '[0.05, 0.05]',  # SPRT Type I/II Confidence
+        'confidence': '[0.10, 0.05]',  # SPRT Type I/II Confidence
     },
 
     # Take a look at Books/books.json
