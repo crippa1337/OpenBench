@@ -12,7 +12,8 @@
         "compilers": [
             "cargo>=1.60.0"
         ],
-        "cpuflags": []
+        "cpuflags": [],
+        "systems" : ["Linux", "Windows", "Darwin"]
     },
     "testmodes": {
         "STC": {

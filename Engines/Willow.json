@@ -11,7 +11,8 @@
     "build" : {
         "path"     : "",
         "compilers": ["clang++", "g++"],
-        "cpuflags" : []
+        "cpuflags" : [],
+        "systems" : ["Linux", "Windows", "Darwin"]
     },
 
     "testmodes" : {
