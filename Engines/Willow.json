@@ -1,7 +1,7 @@
 {
     "private": false,
     "nps"    : 1114816,
-    "base"   : "master",
+    "base"   : "main",
     "book"   : "4moves_noob.epd",
     "bounds" : "[0.00, 5.00]",
     "source" : "https://github.com/Adam-Kulju/Willow",
