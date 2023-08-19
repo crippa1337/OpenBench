@@ -1,6 +1,6 @@
 {
     "private": false,
-    "nps": 2006551,
+    "nps": 2600056,
     "base": "master",
     "source": "https://github.com/archishou/MidnightChessEngine",
     "bounds": "[0.00, 5.00]",
