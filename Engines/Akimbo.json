@@ -2,7 +2,7 @@
     "private": false,
     "nps": 4737600,
     "base": "main",
-    "source": "https://github.com/JacquesRW/akimbo",
+    "source": "https://github.com/jw1912/akimbo",
     "bounds": "[0.00, 5.00]",
     "book": "Pohl.epd",
     "win_adj": "movecount=3 score=400",
@@ -44,7 +44,7 @@
         },
         "STC progtest": {
             "options": "Threads=1 Hash=32",
-            "timecontrol": "10.0+0.1",
+            "timecontrol": "8.0+0.08",
             "report_rate": 8,
             "workload_size": 32,
             "games": 4000,
