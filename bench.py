@@ -1,12 +1,21 @@
+import argparse
 import os
 import json
 import tempfile
 import subprocess
+from Scripts.bench_engine import run_benchmark
 
 if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument('-t', '--threads',        required=True)
+    args = p.parse_args()
+
+    threads = int(args.threads)
+
     root = os.getcwd()
     engines = os.path.join(root, "Engines")
     configs = {}
+    print(f"Using {threads} threads.")
 
     # get all engine config files
     config_files = [file for file in os.scandir(os.path.join(root, "Engines")) if file.is_file()]
@@ -45,13 +54,20 @@ if __name__ == "__main__":
                             exe = "temp.exe"
                         else:
                             exe = "./temp"
-                        result = subprocess.run([exe, "bench"], stdout=subprocess.PIPE)
-                        bench_line = result.stdout.decode('utf-8').strip().split('\n')[-1]
-                        print(bench_line)
+
+                        if not os.path.isfile(exe):
+                            print("Couldn't Build!")
+                            configs[file.name] = None
+                            continue
+
+                        result, bench = run_benchmark(exe, None, threads, 1)
+
+                        print(f"BENCH: {bench}, NPS: {result}")
                         old_nps = str(obj["nps"])
-                        obj["nps"] = int(bench_line.split(' ')[-2])
+                        obj["nps"] = int(result)
                         configs[file.name] = (old_nps, obj)
-                    except:
+                    except Exception as error:
+                        print(error)
                         print("Couldn't run bench!")
                         configs[file.name] = None
                 except:
